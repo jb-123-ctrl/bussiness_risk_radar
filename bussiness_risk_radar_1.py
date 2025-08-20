@@ -20,7 +20,8 @@ import streamlit as st
 
 df = pd.read_csv("archive (1).zip", compression="zip")
 st.write(df.head())
-df.head()
+
+st.write(df.head())
 
 print("Shape of dataset:", df.shape)
 print("\nColumns:\n", df.columns)
