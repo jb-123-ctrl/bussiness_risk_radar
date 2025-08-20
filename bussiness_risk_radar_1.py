@@ -5,9 +5,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
 import plotly.graph_objects as go
-import urllib.request
-import zipfile
-import io
 
 # -----------------------------
 # Page config
@@ -17,18 +14,15 @@ st.title("📊 Business Risk Radar")
 st.write("An interactive dashboard for analyzing business risk datasets.")
 
 # -----------------------------
-# Load data
+# Load CSV directly from GitHub
 # -----------------------------
-# Option 1: Load from GitHub ZIP (replace with your raw GitHub ZIP URL)
-github_zip_url = "https://raw.githubusercontent.com/jb-123-ctrl/bussiness_risk_radar/refs/heads/main/Fortune%20500%20Companies.csv"
+github_csv_url = "https://raw.githubusercontent.com/jb-123-ctrl/bussiness_risk_radar/refs/heads/main/Fortune%20500%20Companies.csv"
 
 try:
-    with urllib.request.urlopen(github_zip_url) as response:
-        z = zipfile.ZipFile(io.BytesIO(response.read()))
-        csv_filename = [f for f in z.namelist() if f.endswith('.csv')][0]  # first CSV in ZIP
-        df = pd.read_csv(z.open(csv_filename))
-except Exception:
-    st.warning("Cannot load GitHub ZIP. Using sample data.")
+    df = pd.read_csv(github_csv_url)
+except Exception as e:
+    st.error(f"Failed to load GitHub CSV: {e}")
+    # Fallback to sample data
     df = pd.DataFrame({
         "Risk_Category": ["High", "Medium", "Low", "High", "Low"],
         "Severity": [90, 50, 20, 80, 10],
@@ -176,4 +170,3 @@ with tab3:
         upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
         top_corr = upper.stack().sort_values(ascending=False).head(10)
         st.write(top_corr)
-
