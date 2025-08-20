@@ -28,9 +28,15 @@ if uploaded_file is not None:
     st.write(df.head())
 
     st.subheader("ℹ️ Dataset Info")
+    # --- Fixed df.info() capture ---
     buffer = []
-    df.info(buf=buffer := type("", (), {"write": buffer.append})())
-    info_str = "\n".join(buffer)
+
+    class BufferWriter:
+        def write(self, txt):
+            buffer.append(txt)
+
+    df.info(buf=BufferWriter())
+    info_str = "".join(buffer)
     st.text(info_str)
 
     st.subheader("📏 Summary Statistics")
@@ -83,6 +89,7 @@ if uploaded_file is not None:
         st.plotly_chart(fig3, use_container_width=True)
 
 else:
-    st.info("👆 Please upload a CSV file to begin.")
+    st.info("👆 Please upload a CSV file to begin")
+
 
 
