@@ -1,10 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import plotly.express as px
-import plotly.graph_objects as go
+import urllib.request
 
 # -----------------------------
 # Page config
@@ -14,15 +11,14 @@ st.title("📊 Business Risk Radar")
 st.write("An interactive dashboard for analyzing business risk datasets.")
 
 # -----------------------------
-# Load CSV directly from GitHub
+# Load data from GitHub CSV
 # -----------------------------
-github_csv_url = "https://raw.githubusercontent.com/jb-123-ctrl/bussiness_risk_radar/refs/heads/main/Fortune%20500%20Companies.csv"
+github_csv_url = "https://raw.githubusercontent.com/jb-123-ctrl/bussiness_risk_radar/main/Fortune%20500%20Companies.csv"
 
 try:
     df = pd.read_csv(github_csv_url)
-except Exception as e:
-    st.error(f"Failed to load GitHub CSV: {e}")
-    # Fallback to sample data
+except Exception:
+    st.warning("Cannot load GitHub CSV. Using sample data.")
     df = pd.DataFrame({
         "Risk_Category": ["High", "Medium", "Low", "High", "Low"],
         "Severity": [90, 50, 20, 80, 10],
@@ -36,7 +32,6 @@ except Exception as e:
 st.sidebar.header("Filter Data")
 num_cols = df.select_dtypes(include=np.number).columns.tolist()
 cat_cols = df.select_dtypes(exclude=np.number).columns.tolist()
-
 filtered_df = df.copy()
 
 # Numeric filters
@@ -54,14 +49,14 @@ for col in cat_cols:
 # -----------------------------
 # Tabs layout
 # -----------------------------
-tab1, tab2, tab3 = st.tabs(["Overview", "Plots", "Analysis"])
+tab1, tab2 = st.tabs(["Overview", "Analysis"])
 
 # -----------------------------
 # Tab 1: Overview
 # -----------------------------
 with tab1:
     st.subheader("🔍 Dataset Preview")
-    st.dataframe(filtered_df.head())
+    st.dataframe(filtered_df.head(), use_container_width=True)
 
     st.subheader("ℹ️ Dataset Info")
     buffer = []
@@ -72,101 +67,45 @@ with tab1:
     st.text("".join(buffer))
 
     st.subheader("📏 Summary Statistics")
-    st.dataframe(filtered_df.describe(include="all"))
+    st.dataframe(filtered_df.describe(include="all"), use_container_width=True)
 
     st.subheader("🚨 Missing Values")
     missing = filtered_df.isnull().sum()
-    st.write(missing[missing > 0])
+    if missing[missing > 0].empty:
+        st.write("No missing values found ✅")
+    else:
+        st.dataframe(missing[missing > 0])
 
+# -----------------------------
+# Tab 2: Analysis
+# -----------------------------
+with tab2:
     st.subheader("📌 Key Insights")
     st.markdown(f"- Total Rows: **{len(filtered_df)}**")
     st.markdown(f"- Total Columns: **{len(filtered_df.columns)}**")
+    
     if 'Risk_Category' in filtered_df.columns:
         st.markdown(f"- Risk Categories: **{', '.join(filtered_df['Risk_Category'].unique())}**")
+    
     if num_cols:
         st.markdown(f"- Numeric Columns: **{', '.join(num_cols)}**")
-
-# -----------------------------
-# Tab 2: Plots
-# -----------------------------
-with tab2:
-    # Correlation Heatmap
-    if num_cols:
-        st.subheader("🔥 Correlation Heatmap")
-        fig, ax = plt.subplots(figsize=(8, 6))
-        sns.heatmap(filtered_df[num_cols].corr(), annot=len(num_cols)<=10, cmap="coolwarm", ax=ax)
-        st.pyplot(fig)
-
-        # Scatter Plot
-        st.subheader("⚡ Scatter Plot")
-        x_axis = st.selectbox("X-axis", num_cols, index=0)
-        y_axis = st.selectbox("Y-axis", num_cols, index=1)
-        df_sample = filtered_df.sample(min(1000, len(filtered_df)))
-        fig3 = px.scatter(df_sample, x=x_axis, y=y_axis, title=f"{x_axis} vs {y_axis}")
-        st.plotly_chart(fig3, use_container_width=True)
-
-        # Histogram
-        st.subheader("📊 Histogram")
-        selected_num = st.selectbox("Select numeric column for histogram", num_cols)
-        fig_hist = px.histogram(filtered_df, x=selected_num, nbins=20, title=f"Histogram of {selected_num}")
-        st.plotly_chart(fig_hist, use_container_width=True)
-
-        # Box Plot
-        st.subheader("📦 Box Plot")
-        selected_num_box = st.selectbox("Select numeric column for box plot", num_cols, index=0)
-        fig_box = px.box(filtered_df, y=selected_num_box, points="all", title=f"Box Plot of {selected_num_box}")
-        st.plotly_chart(fig_box, use_container_width=True)
-
-        # Radar Chart
-        st.subheader("📡 Radar Chart")
-        categories = num_cols
-        values = filtered_df[categories].mean().values.tolist()
-        fig_radar = go.Figure()
-        fig_radar.add_trace(go.Scatterpolar(
-            r=values,
-            theta=categories,
-            fill='toself',
-            name='Average Values'
-        ))
-        fig_radar.update_layout(
-            polar=dict(radialaxis=dict(visible=True)),
-            showlegend=True,
-            title="Radar Chart of Average Numeric Columns"
-        )
-        st.plotly_chart(fig_radar, use_container_width=True)
-
-    # Categorical Plots
-    if cat_cols:
-        st.subheader("📊 Bar Chart")
-        selected_cat = st.selectbox("Select categorical column for bar chart", cat_cols)
-        cat_counts = filtered_df[selected_cat].value_counts().reset_index()
-        cat_counts.columns = [selected_cat, "Count"]
-        fig_bar = px.bar(cat_counts, x=selected_cat, y="Count", title=f"Bar Chart of {selected_cat}")
-        st.plotly_chart(fig_bar, use_container_width=True)
-
-        st.subheader("🥧 Pie Chart")
-        selected_cat_pie = st.selectbox("Select categorical column for pie chart", cat_cols, index=0)
-        pie_counts = filtered_df[selected_cat_pie].value_counts().reset_index()
-        pie_counts.columns = [selected_cat_pie, "Count"]
-        fig_pie = px.pie(pie_counts, names=selected_cat_pie, values="Count", title=f"Pie Chart of {selected_cat_pie}")
-        st.plotly_chart(fig_pie, use_container_width=True)
-
-# -----------------------------
-# Tab 3: Analysis
-# -----------------------------
-with tab3:
-    st.subheader("📌 Insights & Analysis")
-    st.write("- Total rows:", len(filtered_df))
-    st.write("- Total columns:", len(filtered_df.columns))
-
-    if 'Risk_Category' in filtered_df.columns:
-        risk_counts = filtered_df['Risk_Category'].value_counts()
-        st.write("Risk category distribution:")
-        st.bar_chart(risk_counts)
-
-    if num_cols:
-        st.write("Top correlations:")
+        # Display correlations
         corr_matrix = filtered_df[num_cols].corr().abs()
         upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
         top_corr = upper.stack().sort_values(ascending=False).head(10)
-        st.write(top_corr)
+        st.subheader("Top Correlations")
+        if not top_corr.empty:
+            st.dataframe(top_corr)
+        else:
+            st.write("No significant correlations found.")
+
+    if cat_cols:
+        st.subheader("Categorical Column Distribution")
+        for col in cat_cols:
+            counts = filtered_df[col].value_counts()
+            st.markdown(f"**{col}**")
+            st.dataframe(counts)
+
+    st.markdown("---")
+    st.info("This dashboard provides an interactive overview and analysis of business risk data. For advanced insights, visual plots can be added in the future.")
+
