@@ -27,9 +27,5 @@ A Streamlit dashboard to visualize and analyze *business risk metrics* using int
 
 ---
 
-## 🛠 Installation & Running Locally  
 
-1. *Clone the repository*  
-   ```bash
-   git clone https://github.com/yourusername/yourrepo.git
-   cd yourrepo
+  
