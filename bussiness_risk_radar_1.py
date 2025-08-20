@@ -27,8 +27,10 @@ if uploaded_file is not None:
     st.subheader("🔍 Dataset Preview")
     st.write(df.head())
 
+    # -----------------------------
+    # Dataset Info (fixed)
+    # -----------------------------
     st.subheader("ℹ️ Dataset Info")
-    # --- Fixed df.info() capture ---
     buffer = []
 
     class BufferWriter:
@@ -39,6 +41,9 @@ if uploaded_file is not None:
     info_str = "".join(buffer)
     st.text(info_str)
 
+    # -----------------------------
+    # Summary Statistics
+    # -----------------------------
     st.subheader("📏 Summary Statistics")
     st.write(df.describe(include="all"))
 
@@ -56,7 +61,7 @@ if uploaded_file is not None:
     if num_cols:
         st.subheader("🔥 Correlation Heatmap")
         fig, ax = plt.subplots(figsize=(8, 6))
-        sns.heatmap(df[num_cols].corr(), annot=True, cmap="coolwarm", ax=ax)
+        sns.heatmap(df[num_cols].corr(), annot=len(num_cols) <= 10, cmap="coolwarm", ax=ax)
         st.pyplot(fig)
 
     # -----------------------------
@@ -69,6 +74,9 @@ if uploaded_file is not None:
 
         cat_counts = df[selected_cat].value_counts().reset_index()
         cat_counts.columns = [selected_cat, "Count"]
+
+        # Limit to top 50 categories for performance
+        cat_counts = cat_counts.head(50)
 
         fig2 = px.bar(
             cat_counts,
@@ -85,11 +93,13 @@ if uploaded_file is not None:
         st.subheader("⚡ Scatter Plot")
         x_axis = st.selectbox("X-axis:", num_cols, index=0)
         y_axis = st.selectbox("Y-axis:", num_cols, index=1)
-        fig3 = px.scatter(df, x=x_axis, y=y_axis, title=f"Scatter: {x_axis} vs {y_axis}")
+
+        # Sample 1000 points for performance
+        df_sample = df.sample(min(1000, len(df)))
+
+        fig3 = px.scatter(df_sample, x=x_axis, y=y_axis, title=f"Scatter: {x_axis} vs {y_axis}")
         st.plotly_chart(fig3, use_container_width=True)
 
 else:
     st.info("👆 Please upload a CSV file to begin")
-
-
 
