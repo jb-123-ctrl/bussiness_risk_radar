@@ -1,90 +1,99 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import plotly.express as px
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 
-# ----------------------------
-# Load Dataset
-# ----------------------------
+# ------------------------
+# Page setup
+# ------------------------
+st.set_page_config(page_title="Business Risk Radar", layout="wide")
 st.title("📊 Business Risk Radar Dashboard")
 
+# ------------------------
+# Load dataset
+# ------------------------
+st.header("1. Load Dataset")
 df = pd.read_csv("archive (1).zip", compression="zip")
+st.success("Dataset loaded successfully!")
 
 st.subheader("Dataset Preview")
 st.dataframe(df.head())
 
-st.write("### Shape of dataset:", df.shape)
-st.write("### Columns:", df.columns)
+# ------------------------
+# Dataset Info
+# ------------------------
+st.header("2. Dataset Information")
 
-st.subheader("Dataset Info")
-buffer = []
-df.info(buf=buffer.append)  # capture info as text
-info_str = "\n".join(buffer)
-st.text(info_str)
+info_df = pd.DataFrame({
+    "Column": df.columns,
+    "Non-Null Count": df.notnull().sum().values,
+    "Dtype": df.dtypes.values
+})
+st.dataframe(info_df)
 
-st.subheader("Summary Statistics")
-st.write(df.describe())
+st.subheader("Shape of Dataset")
+st.write(f"Rows: {df.shape[0]}, Columns: {df.shape[1]}")
 
-# ----------------------------
-# Exploratory Data Analysis
-# ----------------------------
-st.header("Exploratory Data Analysis (EDA)")
+# ------------------------
+# Descriptive Statistics
+# ------------------------
+st.header("3. Descriptive Statistics")
+st.dataframe(df.describe())
 
-st.subheader("Distribution of Revenue")
-fig = px.histogram(df, x="revenue_mil", nbins=30, title="Distribution of Revenue")
-st.plotly_chart(fig)
+# ------------------------
+# Visualizations
+# ------------------------
+st.header("4. Exploratory Data Analysis")
 
-st.subheader("Distribution of Risk Score")
-fig = px.histogram(df, x="risk_score", nbins=30, title="Distribution of Risk Score")
-st.plotly_chart(fig)
+# Example: Histogram of numeric column
+num_cols = df.select_dtypes(include=np.number).columns.tolist()
+if num_cols:
+    selected_num = st.selectbox("Select a numeric column for histogram:", num_cols)
+    fig = px.histogram(df, x=selected_num, nbins=30, title=f"Histogram of {selected_num}")
+    st.plotly_chart(fig, use_container_width=True)
 
-st.subheader("Revenue vs Risk Score")
-fig = px.scatter(df, x="revenue_mil", y="risk_score", color="industry", title="Revenue vs Risk Score")
-st.plotly_chart(fig)
+# Example: Bar chart of categorical column
+cat_cols = df.select_dtypes(exclude=np.number).columns.tolist()
+if cat_cols:
+    selected_cat = st.selectbox("Select a categorical column for bar chart:", cat_cols)
+    fig2 = px.bar(df[selected_cat].value_counts().reset_index(),
+                  x="index", y=selected_cat,
+                  title=f"Bar Chart of {selected_cat}")
+    st.plotly_chart(fig2, use_container_width=True)
 
-# ----------------------------
-# Correlation Analysis
-# ----------------------------
-st.header("Correlation Analysis")
+# ------------------------
+# Machine Learning Model
+# ------------------------
+st.header("5. Predictive Model (Linear Regression)")
 
-st.subheader("Correlation Heatmap")
-corr = df.corr(numeric_only=True)
-plt.figure(figsize=(10, 6))
-sns.heatmap(corr, annot=True, cmap="coolwarm", fmt=".2f")
-st.pyplot(plt)
+if len(num_cols) >= 2:
+    target = st.selectbox("Select target variable:", num_cols)
+    features = st.multiselect("Select feature(s):", [col for col in num_cols if col != target])
 
-# ----------------------------
-# Predictive Modeling
-# ----------------------------
-st.header("Predictive Modeling: Revenue vs Risk Score")
+    if features:
+        X = df[features]
+        y = df[target]
 
-X = df[["revenue_mil"]]
-y = df["risk_score"]
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        model = LinearRegression()
+        model.fit(X_train, y_train)
 
-model = LinearRegression()
-model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
 
-y_pred = model.predict(X_test)
+        st.subheader("Model Performance")
+        st.write(f"Mean Squared Error: {mean_squared_error(y_test, y_pred):.2f}")
+        st.write(f"R² Score: {r2_score(y_test, y_pred):.2f}")
 
-st.subheader("Model Performance")
-st.write("Mean Squared Error:", mean_squared_error(y_test, y_pred))
-st.write("R² Score:", r2_score(y_test, y_pred))
+        # Scatter plot of actual vs predicted
+        fig3 = px.scatter(x=y_test, y=y_pred,
+                          labels={'x': "Actual", 'y': "Predicted"},
+                          title="Actual vs Predicted")
+        st.plotly_chart(fig3, use_container_width=True)
 
-st.subheader("Actual vs Predicted Risk Score")
-fig = px.scatter(x=y_test, y=y_pred, labels={"x": "Actual", "y": "Predicted"}, title="Actual vs Predicted Risk Score")
-st.plotly_chart(fig)
-
-# ----------------------------
-# Feature Importance (Coefficient)
-# ----------------------------
-st.header("Feature Importance")
-coef_df = pd.DataFrame(model.coef_, X.columns, columns=["Coefficient"])
-st.dataframe(coef_df)
+else:
+    st.warning("Not enough numeric columns for regression model.")
 
