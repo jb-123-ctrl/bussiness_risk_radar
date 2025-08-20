@@ -1,13 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import plotly.express as px
 import plotly.graph_objects as go
-import urllib.request
-import io
-import zipfile
 
 # -----------------------------
 # Page config
@@ -17,9 +11,9 @@ st.title("📊 Business Risk Radar")
 st.write("An interactive dashboard for analyzing business risk datasets.")
 
 # -----------------------------
-# Load data
+# Load sample dataset
 # -----------------------------
-# Replace with your GitHub CSV URL
+# Replace this with your GitHub CSV raw URL if needed
 github_csv_url = "https://raw.githubusercontent.com/jb-123-ctrl/bussiness_risk_radar/refs/heads/main/Fortune%20500%20Companies.csv"
 
 try:
@@ -30,6 +24,7 @@ except Exception:
         "Risk_Category": ["High", "Medium", "Low", "High", "Low"],
         "Severity": [90, 50, 20, 80, 10],
         "Probability": [0.9, 0.5, 0.2, 0.8, 0.1],
+        "Impact": [95, 60, 30, 85, 15],
         "Department": ["Finance", "HR", "IT", "Finance", "IT"]
     })
 
@@ -55,118 +50,53 @@ for col in cat_cols:
     filtered_df = filtered_df[filtered_df[col].isin(options)]
 
 # -----------------------------
-# Tabs layout
+# Overview / Summary
 # -----------------------------
-tab1, tab2, tab3 = st.tabs(["Overview", "Plots", "Analysis"])
+st.subheader("📌 Summary Insights")
+st.markdown(f"- Total rows: **{len(filtered_df)}**")
+st.markdown(f"- Total columns: **{len(filtered_df.columns)}**")
+if 'Risk_Category' in filtered_df.columns:
+    risk_counts = filtered_df['Risk_Category'].value_counts()
+    st.markdown(f"- Risk Categories: **{', '.join(risk_counts.index)}**")
+    st.bar_chart(risk_counts)
 
-# -----------------------------
-# Tab 1: Overview
-# -----------------------------
-with tab1:
-    st.subheader("🔍 Dataset Preview")
-    st.dataframe(filtered_df.head())
-
-    st.subheader("ℹ️ Dataset Info")
-    buffer = []
-    class BufferWriter:
-        def write(self, txt):
-            buffer.append(txt)
-    filtered_df.info(buf=BufferWriter())
-    st.text("".join(buffer))
-
-    st.subheader("📏 Summary Statistics")
-    st.dataframe(filtered_df.describe(include="all"))
-
-    st.subheader("🚨 Missing Values")
-    missing = filtered_df.isnull().sum()
-    st.write(missing[missing > 0])
-
-    st.subheader("📌 Key Insights")
-    st.markdown(f"- Total Rows: **{len(filtered_df)}**")
-    st.markdown(f"- Total Columns: **{len(filtered_df.columns)}**")
-    if 'Risk_Category' in filtered_df.columns:
-        st.markdown(f"- Risk Categories: **{', '.join(filtered_df['Risk_Category'].unique())}**")
-    if num_cols:
-        st.markdown(f"- Numeric Columns: **{', '.join(num_cols)}**")
+if num_cols:
+    st.markdown(f"- Numeric Columns: **{', '.join(num_cols)}**")
 
 # -----------------------------
-# Tab 2: Plots
+# Radar Chart for Numeric Risk Metrics
 # -----------------------------
-with tab2:
-    # Numeric Plots
-    if num_cols:
-        st.subheader("🔥 Correlation Heatmap")
-        fig, ax = plt.subplots(figsize=(8, 6))
-        sns.heatmap(filtered_df[num_cols].corr(), annot=len(num_cols)<=10, cmap="coolwarm", ax=ax)
-        st.pyplot(fig)
+st.subheader("📡 Radar Chart of Risk Metrics")
 
-        st.subheader("⚡ Scatter Plot")
-        x_axis = st.selectbox("X-axis", num_cols, index=0, key="scatter_x")
-        y_axis = st.selectbox("Y-axis", num_cols, index=1, key="scatter_y")
-        df_sample = filtered_df.sample(min(1000, len(filtered_df)))
-        fig_scatter = px.scatter(df_sample, x=x_axis, y=y_axis, title=f"{x_axis} vs {y_axis}")
-        st.plotly_chart(fig_scatter, use_container_width=True, key="scatter1")
+if len(filtered_df) > 0 and num_cols:
+    categories = num_cols
+    values = filtered_df[categories].mean().values.tolist()
+    
+    fig_radar = go.Figure()
 
-        st.subheader("📊 Histogram")
-        selected_num = st.selectbox("Select numeric column for histogram", num_cols, key="hist_num")
-        fig_hist = px.histogram(filtered_df, x=selected_num, nbins=20, title=f"Histogram of {selected_num}")
-        st.plotly_chart(fig_hist, use_container_width=True, key="hist1")
+    fig_radar.add_trace(go.Scatterpolar(
+        r=values,
+        theta=categories,
+        fill='toself',
+        name='Average Risk Metrics',
+        line=dict(color='red'),
+        marker=dict(size=8)
+    ))
 
-        st.subheader("📦 Box Plot")
-        selected_num_box = st.selectbox("Select numeric column for box plot", num_cols, index=0, key="box_num")
-        fig_box = px.box(filtered_df, y=selected_num_box, points="all", title=f"Box Plot of {selected_num_box}")
-        st.plotly_chart(fig_box, use_container_width=True, key="box1")
-
-        st.subheader("📡 Radar Chart (Filtered Data)")
-        categories = num_cols
-        values = filtered_df[categories].mean().values.tolist()
-        fig_radar = go.Figure()
-        fig_radar.add_trace(go.Scatterpolar(
-            r=values,
-            theta=categories,
-            fill='toself',
-            name='Average Values'
-        ))
-        fig_radar.update_layout(
-            polar=dict(radialaxis=dict(visible=True)),
-            showlegend=True,
-            title="Radar Chart of Average Numeric Columns"
-        )
-        st.plotly_chart(fig_radar, use_container_width=True, key="radar1")
-
-    # Categorical Plots
-    if cat_cols:
-        st.subheader("📊 Bar Chart")
-        selected_cat = st.selectbox("Select categorical column for bar chart", cat_cols, key="bar_cat")
-        cat_counts = filtered_df[selected_cat].value_counts().reset_index()
-        cat_counts.columns = [selected_cat, "Count"]
-        fig_bar = px.bar(cat_counts, x=selected_cat, y="Count", title=f"Bar Chart of {selected_cat}")
-        st.plotly_chart(fig_bar, use_container_width=True, key="bar1")
-
-        st.subheader("🥧 Pie Chart")
-        selected_cat_pie = st.selectbox("Select categorical column for pie chart", cat_cols, key="pie_cat")
-        pie_counts = filtered_df[selected_cat_pie].value_counts().reset_index()
-        pie_counts.columns = [selected_cat_pie, "Count"]
-        fig_pie = px.pie(pie_counts, names=selected_cat_pie, values="Count", title=f"Pie Chart of {selected_cat_pie}")
-        st.plotly_chart(fig_pie, use_container_width=True, key="pie1")
+    fig_radar.update_layout(
+        polar=dict(
+            radialaxis=dict(visible=True, range=[0, max(10, max(values)*1.2)])
+        ),
+        showlegend=True,
+        title="Average Risk Metrics (Dynamic with Filters)"
+    )
+    
+    st.plotly_chart(fig_radar, use_container_width=True)
+else:
+    st.info("No numeric data available to display radar chart.")
 
 # -----------------------------
-# Tab 3: Analysis
+# Optional: Display filtered data
 # -----------------------------
-with tab3:
-    st.subheader("📌 Insights & Analysis")
-    st.write("- Total rows:", len(filtered_df))
-    st.write("- Total columns:", len(filtered_df.columns))
-
-    if 'Risk_Category' in filtered_df.columns:
-        st.write("Risk category distribution:")
-        risk_counts = filtered_df['Risk_Category'].value_counts()
-        fig_risk = px.bar(risk_counts, x=risk_counts.index, y=risk_counts.values, title="Risk Category Distribution")
-        st.plotly_chart(fig_risk, use_container_width=True, key="risk_bar1")
-
-    if num_cols:
-        st.write("Top correlations:")
-        corr_matrix = filtered_df[num_cols].corr().abs()
-        upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-        top_corr = upper.stack().sort_values(ascending=False).head(10)
-        st.write(top_corr)
+with st.expander("Show Filtered Data"):
+    st.dataframe(filtered_df)
