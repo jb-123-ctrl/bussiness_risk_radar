@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import plotly.graph_objects as go
 import urllib.request
 
 # -----------------------------
@@ -49,7 +50,7 @@ for col in cat_cols:
 # -----------------------------
 # Tabs layout
 # -----------------------------
-tab1, tab2 = st.tabs(["Overview", "Analysis"])
+tab1, tab2 = st.tabs(["Overview", "Risk Radar"])
 
 # -----------------------------
 # Tab 1: Overview
@@ -77,35 +78,33 @@ with tab1:
         st.dataframe(missing[missing > 0])
 
 # -----------------------------
-# Tab 2: Analysis
+# Tab 2: Risk Radar Chart
 # -----------------------------
 with tab2:
-    st.subheader("📌 Key Insights")
-    st.markdown(f"- Total Rows: **{len(filtered_df)}**")
-    st.markdown(f"- Total Columns: **{len(filtered_df.columns)}**")
-    
-    if 'Risk_Category' in filtered_df.columns:
-        st.markdown(f"- Risk Categories: **{', '.join(filtered_df['Risk_Category'].unique())}**")
-    
-    if num_cols:
-        st.markdown(f"- Numeric Columns: **{', '.join(num_cols)}**")
-        # Display correlations
-        corr_matrix = filtered_df[num_cols].corr().abs()
-        upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-        top_corr = upper.stack().sort_values(ascending=False).head(10)
-        st.subheader("Top Correlations")
-        if not top_corr.empty:
-            st.dataframe(top_corr)
-        else:
-            st.write("No significant correlations found.")
+    st.subheader("📡 Risk Radar Chart (Dynamic)")
 
-    if cat_cols:
-        st.subheader("Categorical Column Distribution")
-        for col in cat_cols:
-            counts = filtered_df[col].value_counts()
-            st.markdown(f"**{col}**")
-            st.dataframe(counts)
+    if 'Risk_Category' not in filtered_df.columns or len(num_cols) == 0:
+        st.warning("Cannot create radar chart: Missing numeric columns or Risk_Category.")
+    else:
+        # Calculate average numeric values per Risk_Category
+        radar_data = filtered_df.groupby('Risk_Category')[num_cols].mean()
 
-    st.markdown("---")
-    st.info("This dashboard provides an interactive overview and analysis of business risk data. For advanced insights, visual plots can be added in the future.")
+        fig_radar = go.Figure()
+
+        for category in radar_data.index:
+            fig_radar.add_trace(go.Scatterpolar(
+                r=radar_data.loc[category].values,
+                theta=num_cols,
+                fill='toself',
+                name=category
+            ))
+
+        fig_radar.update_layout(
+            polar=dict(radialaxis=dict(visible=True)),
+            showlegend=True,
+            title="Average Numeric Values per Risk Category"
+        )
+
+        st.plotly_chart(fig_radar, use_container_width=True)
+
 
