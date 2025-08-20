@@ -8,7 +8,7 @@ A Streamlit dashboard to visualize and analyze *business risk metrics* using int
 👉 [Click here to view the Streamlit App](https://jb-123-ctrl-bussiness-risk-radar-bussiness-risk-radar-1-gzj7tw.streamlit.app/)  
 
 ## 📂 Source Code  
-👉 [GitHub Repository](https://github.com/yourusername/yourrepo)  
+👉 [GitHub Repository](https://github.com/jb-123-ctrl/bussiness_risk_radar/tree/main)  
 
 ---
 
