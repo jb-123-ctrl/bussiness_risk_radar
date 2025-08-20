@@ -20,7 +20,7 @@ st.write("An interactive dashboard for analyzing business risk datasets.")
 # Load data
 # -----------------------------
 # Option 1: Load from GitHub ZIP (replace with your raw GitHub ZIP URL)
-github_zip_url = "https://github.com/<username>/<repo>/raw/main/your_data.zip"
+github_zip_url = "https://raw.githubusercontent.com/jb-123-ctrl/bussiness_risk_radar/refs/heads/main/Fortune%20500%20Companies.csv"
 
 try:
     with urllib.request.urlopen(github_zip_url) as response:
